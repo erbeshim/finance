@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Финансовый помощник</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#E8EDF1;--surface:#fff;--ink:#13222D;--muted:#5C6E7B;--line:#D3DBE1;--accent:#0E6B5C;--accent-ink:#fff;--danger:#B3303F;--income:#2E9E5B}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0F1A22;--surface:#17252F;--ink:#E7EEF2;--muted:#93A5B2;--line:#2A3B47;--accent:#3FBFA6;--accent-ink:#06211C;--danger:#F08090;--income:#52C783}}
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Onest,system-ui,sans-serif}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1120px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+h1{font-size:20px;margin:0;font-weight:800}
+h2{font-size:15px;margin:0 0 12px;font-weight:700;color:var(--muted)}
+.bar{display:flex;gap:8px;align-items:center}
+input,select{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%}
+button{cursor:pointer;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 14px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px}
+.grid{display:grid;grid-template-columns:1.5fr 1fr;gap:16px}
+.grid>*{min-width:0}
+@media(max-width:820px){.grid{grid-template-columns:1fr}}
+.hero{margin-bottom:16px}
+.hero .big{font-size:clamp(34px,6vw,56px);font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.hero .meta{display:flex;gap:24px;flex-wrap:wrap;color:var(--muted);margin-top:6px}
+.meta b{color:var(--ink)}
+.pos{color:var(--income)!important}.neg{color:var(--danger)!important}
+/* лента категорий */
+.cat{display:block;width:100%;text-align:left;border:0;background:none;padding:10px 6px;border-radius:8px}
+.cat:hover,.cat[aria-pressed=true]{background:var(--bg)}
+.cat .row{display:flex;justify-content:space-between;gap:8px;margin-bottom:6px}
+.cat .track{height:10px;background:var(--bg);border-radius:6px;overflow:hidden}
+.cat:hover .track,.cat[aria-pressed=true] .track{background:var(--line)}
+.cat .fill{height:100%;border-radius:6px}
+.cat small{color:var(--muted)}
+.empty{color:var(--muted);padding:18px 4px}
+/* форма */
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--bg);padding:4px;border-radius:10px;margin-bottom:12px}
+.seg button{border:0;background:none}.seg button[aria-pressed=true]{background:var(--surface);font-weight:700}
+label{display:block;font-size:14px;color:var(--muted);margin:10px 0 4px}
+.err{color:var(--danger);min-height:1.4em;font-size:14px;margin:8px 0 0}
+/* операции */
+.tx{display:grid;grid-template-columns:36px 1fr auto auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.tx .ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-size:18px}
+.tx .d{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tx .d small{display:block;color:var(--muted)}
+.tx .x{border:0;background:none;color:var(--muted);padding:6px}.tx .x:hover{color:var(--danger)}
+.chart{position:relative;height:220px}
+#auth{max-width:380px;margin:12vh auto 0}
+.link{border:0;background:none;color:var(--accent);padding:0;text-decoration:underline}
+[hidden]{display:none!important}
+.hint{color:var(--muted);font-size:14px;margin:0 0 10px}
+.msg{font-size:14px;min-height:1.4em;margin:8px 0}
+textarea{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;resize:vertical}
+#smsList div{padding:2px 0}
+
+html{padding-bottom:env(safe-area-inset-bottom,0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<section id="auth" class="card" hidden>
+  <h1>Финансовый помощник</h1>
+  <p style="color:var(--muted);margin:6px 0 0" id="authHint">Демо-версия: подойдёт любой email и пароль от 8 символов. Данные хранятся только в вашем браузере.</p>
+  <label for="email">Email</label><input id="email" type="email" autocomplete="email">
+  <label for="pw">Пароль (от 8 символов)</label><input id="pw" type="password" autocomplete="current-password">
+  <p class="err" id="authErr" role="alert"></p>
+  <button class="primary" id="authBtn" style="width:100%">Войти</button>
+  <p style="text-align:center;margin:14px 0 0"><button class="link" id="authSwitch">Создать аккаунт</button></p>
+</section>
+
+<main id="app" hidden>
+  <header>
+    <h1>Финансовый помощник</h1>
+    <div class="bar">
+      <input type="month" id="month" aria-label="Месяц" style="width:auto">
+      <button id="logout">Выйти</button>
+    </div>
+  </header>
+
+  <section class="card hero" aria-live="polite">
+    <h2>Расходы за месяц</h2>
+    <div class="big" id="spent">—</div>
+    <div class="meta">
+      <span>Доходы: <b id="inc">—</b></span>
+      <span>Остаток: <b id="bal">—</b></span>
+    </div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Расходы по категориям <span id="filterNote"></span></h2>
+      <div id="cats"></div>
+    </section>
+
+    <div style="display:grid;gap:16px;align-content:start">
+      <section class="card">
+        <h2>Новая операция</h2>
+        <div class="seg" id="seg">
+          <button type="button" data-t="expense" aria-pressed="true">Расход</button>
+          <button type="button" data-t="income" aria-pressed="false">Доход</button>
+        </div>
+        <label for="fcat">Категория</label><select id="fcat"></select>
+        <label for="famt">Сумма</label><input id="famt" type="number" min="0.01" step="0.01" inputmode="decimal">
+        <label for="fdate">Дата</label><input id="fdate" type="date">
+        <label for="fdesc">Описание (необязательно)</label><input id="fdesc" maxlength="255">
+        <p class="err" id="fErr" role="alert"></p>
+        <button class="primary" id="fBtn" style="width:100%">Добавить</button>
+      </section>
+      <section class="card">
+        <h2>СМС и push от банка</h2>
+        <p class="hint">Скопируйте уведомления об оплате из СМС или приложения банка и вставьте сюда, по одному на строку. Коды подтверждения игнорируются.</p>
+        <textarea id="smsText" rows="4" aria-label="Тексты уведомлений банка" placeholder="Оплата 1 450,50 сом в GLOBUS. Баланс 12 000 сом"></textarea>
+        <div id="smsList" class="hint" style="margin-top:8px"></div>
+        <p class="msg" id="smsMsg" aria-live="polite"></p>
+        <div class="bar"><button id="smsParse" style="flex:1">Распознать</button><button class="primary" id="smsAdd" style="flex:1" disabled>Добавить</button></div>
+      </section>
+      <section class="card">
+        <h2>Импорт выписки из банка</h2>
+        <p class="hint">Скачайте выписку в интернет-банке или приложении в формате CSV и выберите файл. Операции сами распределятся по категориям.</p>
+        <input id="impFile" type="file" accept=".csv,.txt,text/csv" aria-label="Файл выписки">
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="impInvert" style="width:auto"> В моей выписке расходы указаны положительными числами</label>
+        <p class="msg" id="impMsg" aria-live="polite"></p>
+        <button class="primary" id="impBtn" style="width:100%" disabled>Импортировать</button>
+      </section>
+      <section class="card"><h2>Структура расходов</h2><div class="chart"><canvas id="pie" aria-label="Диаграмма расходов по категориям" role="img"></canvas></div></section>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-top:16px">
+    <section class="card">
+      <h2>Операции <span id="txNote"></span></h2>
+      <div id="txs"></div>
+    </section>
+    <section class="card" style="align-self:start"><h2>Доходы и расходы за 6 месяцев</h2><div class="chart"><canvas id="trend" aria-label="Динамика доходов и расходов" role="img"></canvas></div></section>
+  </div>
+</main>
+</div>
+
+<script>
+/* Разбор банковской выписки (CSV). Работает в браузере: файл на сервер целиком не отправляется. */
+const KEYWORDS = {
+  expense: [
+    ['Коммунальные услуги', /коммунал|электро|энерго|водоканал|теплосет|отоплен|вывоз мусор|тазалык|utilit/i],
+    ['Связь и интернет', /beeline|билайн|megacom|мегаком|nur ?telecom|нур ?телеком|интернет|internet|saima|сайма|мобильн|телеком/i],
+    ['Жильё', /аренд|квартир|ипотек|\brent|жилье|жильё/i],
+    ['Учеба', /универс|институт|школ|лицей|курс|обучен|учеб|tuition|udemy|coursera|книг|канцеляр|академ/i],
+    ['Здоровье', /аптек|pharm|фарм|клиник|больниц|врач|стомат|медицин|лаборатор/i],
+    ['Транспорт', /такси|taxi|yandex ?go|яндекс ?го|indrive|jeti|азс|бензин|petrol|газпром|нефтегаз|маршрутк|автобус|метро|проезд|парковк|parking|uber|транспорт/i],
+    ['Еда', /продукт|супермаркет|market|маркет|globus|глобус|народный|фрунзе|магнум|кафе|ресторан|restaurant|coffee|кофе|пицц|pizza|бургер|burger|kfc|обед|столов|пекарн|булочн|bakery|navat|dodo|додо|шаурм|food/i],
+    ['Одежда', /одежд|обувь|zara|lcw|defacto|sela|fashion|куртк/i],
+    ['Развлечения', /кино|cinema|netflix|spotify|steam|игр|клуб|боулинг|концерт|театр|youtube|apple music/i],
+  ],
+  income: [
+    ['Зарплата', /зарплат|salary|оклад|аванс|заработн/i],
+    ['Стипендия', /стипенд/i],
+    ['Подработка', /фриланс|freelance|подработ|гонорар/i],
+  ],
+};
+function categoryName(desc, type) {
+  for (const [name, re] of KEYWORDS[type]) if (re.test(desc)) return name;
+  return type === 'expense' ? 'Прочее' : 'Прочие доходы';
+}
+
+function parseCSV(text) {
+  text = text.replace(/^\uFEFF/, '');
+  const first = text.split(/\r?\n/, 1)[0];
+  const delim = [';', '\t', ','].map(d => [d, first.split(d).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === delim) { row.push(cur); cur = ''; }
+    else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(cur); cur = '';
+      if (row.some(x => x.trim())) rows.push(row);
+      row = [];
+    } else cur += ch;
+  }
+  row.push(cur); if (row.some(x => x.trim())) rows.push(row);
+  return rows;
+}
+
+function toNumber(s) {
+  let t = String(s ?? '').replace(/[\u00a0\s]/g, '').replace(/[−–—]/g, '-').replace(/[^\d.,\-+]/g, '');
+  if (!t) return 0;
+  const lc = t.lastIndexOf(','), ld = t.lastIndexOf('.');
+  if (lc > -1 && ld > -1) t = lc > ld ? t.replace(/\./g, '').replace(',', '.') : t.replace(/,/g, '');
+  else if (lc > -1) t = t.replace(',', '.');
+  const n = parseFloat(t);
+  return isNaN(n) ? 0 : n;
+}
+
+function toISODate(s) {
+  s = String(s || '').trim();
+  let m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[0];
+  m = s.match(/(\d{1,2})[./](\d{1,2})[./](\d{4}|\d{2})/);
+  if (!m) return null;
+  let [, d, mo, y] = m;
+  if (y.length === 2) y = '20' + y;
+  if (+mo < 1 || +mo > 12 || +d < 1 || +d > 31) return null;
+  return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
+}
+
+/* catId(name, type) -> id категории; invert — расходы в выписке указаны положительными числами */
+function parseStatement(text, catId, invert) {
+  const rows = parseCSV(text);
+  const hi = rows.slice(0, 20).findIndex(r => r.some(c => /дат|date/i.test(c)) && r.some(c => /сумм|amount|расход|приход|дебет|кредит|debit|credit|списан|зачисл/i.test(c)));
+  if (hi < 0) throw new Error('Не нашёл столбцы с датой и суммой. Нужна выписка в формате CSV с заголовками.');
+  const h = rows[hi].map(c => c.trim().toLowerCase());
+  const find = re => h.findIndex(c => re.test(c));
+  const iDate = find(/дат|date/), iAmt = find(/сумм|amount/);
+  const iDesc = find(/назначен|описан|детал|контрагент|получател|merchant|descr|detail|narrat|комментар|примечан/);
+  const iDebit = find(/расход|дебет|списан|debit|withdraw|outgo/), iCredit = find(/приход|кредит|зачисл|credit|deposit|income/);
+  const split = iDebit > -1 && iCredit > -1;
+  const out = []; let skipped = 0;
+  for (const r of rows.slice(hi + 1)) {
+    const date = toISODate(r[iDate]);
+    let type, amount;
+    if (split) {
+      const d = Math.abs(toNumber(r[iDebit])), c = Math.abs(toNumber(r[iCredit]));
+      if (d > 0) { type = 'expense'; amount = d; } else if (c > 0) { type = 'income'; amount = c; }
+    } else if (iAmt > -1) {
+      const a = toNumber(r[iAmt]);
+      if (a) { type = (a < 0) !== !!invert ? 'expense' : 'income'; amount = Math.abs(a); }
+    }
+    if (!date || !amount) { skipped++; continue; }
+    const description = (r[iDesc] || '').trim().slice(0, 255);
+    const id = catId(categoryName(description, type), type);
+    if (!id) { skipped++; continue; }
+    out.push({occurred_on: date, amount, type, description, category_id: id});
+  }
+  return {rows: out, skipped};
+}
+
+/* Разбор СМС и push-уведомлений банка. Всё происходит в браузере, текст сообщений нигде не сохраняется.
+   Зависит от importer.js (categoryName, toISODate, toNumber). */
+
+const NUM = '(\\d{1,3}(?:[ \\u00a0]\\d{3})+(?:[.,]\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?)';
+const CUR_AFTER = '(сом(?:ов)?|kgs|som|с\\.|usd|\\$|eur|€|руб\\.?|rub|₽|kzt|₸)(?![a-zа-я])';
+const EXP = /списан|списание|оплат|покупк|снят|выдач|перевод на|purchase|payment|withdraw|debit|платеж|платёж|расход|spent/i;
+const INC = /зачислен|поступлен|пополнен|получен|перевод от|credit|deposit|received|зарплат/i;
+
+function parseSms(msg, today) {
+  const raw = msg.replace(/\s+/g, ' ').trim();
+  if (!raw) return null;
+  // убираем даты, время и маски карт, чтобы они не склеились с суммой
+  const t = raw.replace(/\d{1,2}[./]\d{1,2}[./]\d{2,4}/g, ' ').replace(/\d{1,2}:\d{2}(:\d{2})?/g, ' ')
+               .replace(/\*+\s*\d{2,4}|\d{4}\s*\*+\s*\d{0,4}/g, ' ');
+  const skipCtx = /баланс|остаток|доступн|balance|avail|лимит/i;
+  let amount = 0, cur = '';
+  for (const m of t.matchAll(new RegExp(NUM + '\\s*' + CUR_AFTER, 'ig'))) {
+    if (skipCtx.test(t.slice(Math.max(0, m.index - 16), m.index))) continue;
+    amount = toNumber(m[1]); cur = m[2]; break;
+  }
+  if (!amount) for (const m of t.matchAll(new RegExp('(kgs|usd|eur|\\$|€|сом)\\s*' + NUM, 'ig'))) {
+    if (skipCtx.test(t.slice(Math.max(0, m.index - 16), m.index))) continue;
+    amount = toNumber(m[2]); cur = m[1]; break;
+  }
+  if (!amount) return null;                                  // например, СМС с кодом подтверждения
+  if (!/сом|kgs|som|^с\.$/i.test(cur)) return {error: 'currency'};
+  const e = t.search(EXP), i = t.search(INC);
+  if (e < 0 && i < 0) return null;
+  const type = i < 0 || (e >= 0 && e < i) ? 'expense' : 'income';
+  const d = t.match(/(?:(?:^|\s)в|\bat\b|merchant|торговая точка|магазин|получатель|описание)[:\s]+([^.;,]{2,40})/i);
+  const description = (d ? d[1] : t).trim().slice(0, 80);
+  return {amount, type, description, occurred_on: toISODate(raw) || today, category: categoryName(t, type)};
+}
+
+function parseSmsBatch(text, today, catId) {
+  const blocks = text.split(/\n\s*\n/).length > 1 ? text.split(/\n\s*\n/) : text.split('\n');
+  const rows = []; let skipped = 0, foreign = 0;
+  for (const b of blocks) {
+    if (!b.trim()) continue;
+    const r = parseSms(b, today);
+    if (r && r.error) { foreign++; continue; }
+    const id = r && catId(r.category, r.type);
+    if (!id) { skipped++; continue; }
+    rows.push({occurred_on: r.occurred_on, amount: r.amount, type: r.type, description: r.description, category_id: id, category: r.category});
+  }
+  return {rows, skipped, foreign};
+}
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = n => new Intl.NumberFormat('ru-RU', {maximumFractionDigits: 2}).format(n) + ' сом';
+const today = () => new Date().toISOString().slice(0, 10);
+let token = null, cats = [], type = 'expense', filter = null, mode = 'login', charts = {};
+
+const LS = {get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+            set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} },
+            del: k => { try { localStorage.removeItem(k); } catch (e) {} }};
+
+async function api(path, opt = {}) {
+  const r = await fetch('/api' + path, {...opt, headers: {'Content-Type': 'application/json', ...(token ? {Authorization: 'Bearer ' + token} : {})}});
+  if (r.status === 204) return null;
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    if (r.status === 401 && token) logout();
+    const det = d.detail;
+    throw new Error(typeof det === 'string' ? det : 'Проверьте введённые данные');
+  }
+  return d;
+}
+
+/* --- вход --- */
+function show(authed) { $('#auth').hidden = authed; $('#app').hidden = !authed; }
+function logout() { token = null; LS.del('token'); show(false); }
+$('#authSwitch').onclick = () => {
+  mode = mode === 'login' ? 'register' : 'login';
+  $('#authBtn').textContent = mode === 'login' ? 'Войти' : 'Создать аккаунт';
+  $('#authSwitch').textContent = mode === 'login' ? 'Создать аккаунт' : 'У меня уже есть аккаунт';
+  $('#authHint').textContent = mode === 'login' ? 'Войдите, чтобы увидеть свои расходы.' : 'Регистрация занимает полминуты.';
+};
+$('#authBtn').onclick = async () => {
+  $('#authErr').textContent = '';
+  try {
+    const d = await api('/auth/' + mode, {method: 'POST', body: JSON.stringify({email: $('#email').value, password: $('#pw').value})});
+    token = d.token; LS.set('token', token); start();
+  } catch (e) { $('#authErr').textContent = e.message; }
+};
+$('#logout').onclick = logout;
+
+/* --- загрузка --- */
+async function start() {
+  show(true);
+  cats = await api('/categories');
+  fillCats();
+  $('#fdate').value = today();
+  if (!$('#month').value) $('#month').value = today().slice(0, 7);
+  refresh();
+}
+async function refresh() {
+  const m = $('#month').value;
+  const q = `?month=${m}` + (filter ? `&category_id=${filter}` : '');
+  const [ov, txs] = await Promise.all([api('/analytics/overview?month=' + m), api('/transactions' + q)]);
+  renderOverview(ov); renderTxs(txs);
+}
+$('#month').onchange = () => { filter = null; refresh(); };
+
+/* --- отрисовка --- */
+function renderOverview(o) {
+  $('#spent').textContent = money(o.expenses);
+  $('#inc').textContent = money(o.income);
+  $('#bal').textContent = money(o.balance);
+  $('#bal').className = o.balance >= 0 ? 'pos' : 'neg';
+  const el = $('#cats');
+  el.innerHTML = o.by_category.length ? o.by_category.map(c => `
+    <button class="cat" data-id="${c.id}" aria-pressed="${filter === c.id}">
+      <span class="row"><span>${esc(c.icon)} ${esc(c.name)} <small>${c.count} оп.</small></span><b>${money(c.total)} <small>${c.percent}%</small></b></span>
+      <span class="track" style="display:block"><span class="fill" style="display:block;width:${c.percent}%;background:${esc(c.color)}"></span></span>
+    </button>`).join('') : '<p class="empty">В этом месяце расходов нет. Добавьте первую операцию справа.</p>';
+  el.querySelectorAll('.cat').forEach(b => b.onclick = () => { const id = +b.dataset.id; filter = filter === id ? null : id; refresh(); });
+  $('#filterNote').textContent = filter ? '· нажмите ещё раз, чтобы сбросить фильтр' : '· нажмите на категорию, чтобы отфильтровать операции';
+
+  charts.pie?.destroy(); charts.trend?.destroy();
+  const css = getComputedStyle(document.documentElement), muted = css.getPropertyValue('--muted'), line = css.getPropertyValue('--line');
+  if (o.by_category.length) charts.pie = new Chart($('#pie'), {type: 'doughnut',
+    data: {labels: o.by_category.map(c => c.name), datasets: [{data: o.by_category.map(c => c.total), backgroundColor: o.by_category.map(c => c.color), borderWidth: 0}]},
+    options: {maintainAspectRatio: false, cutout: '62%', plugins: {legend: {position: 'right', labels: {color: muted.trim(), boxWidth: 10}}}}});
+  charts.trend = new Chart($('#trend'), {type: 'bar',
+    data: {labels: o.trend.map(t => t.month), datasets: [
+      {label: 'Доходы', data: o.trend.map(t => t.income), backgroundColor: css.getPropertyValue('--income').trim()},
+      {label: 'Расходы', data: o.trend.map(t => t.expense), backgroundColor: '#E07A3F'}]},
+    options: {maintainAspectRatio: false, scales: {x: {ticks: {color: muted.trim()}, grid: {display: false}}, y: {ticks: {color: muted.trim()}, grid: {color: line.trim()}}}, plugins: {legend: {labels: {color: muted.trim()}}}}});
+}
+function renderTxs(list) {
+  $('#txNote').textContent = filter ? '· выбрана категория' : '';
+  $('#txs').innerHTML = list.length ? list.map(t => `
+    <div class="tx">
+      <span class="ic" style="background:${esc(t.category.color)}26">${esc(t.category.icon)}</span>
+      <span class="d">${esc(t.description || t.category.name)}<small>${esc(t.category.name)} · ${t.occurred_on.split('-').reverse().join('.')}</small></span>
+      <b class="${t.type === 'income' ? 'pos' : ''}">${t.type === 'income' ? '+' : '−'}${money(t.amount)}</b>
+      <button class="x" data-id="${t.id}" aria-label="Удалить операцию">✕</button>
+    </div>`).join('') : '<p class="empty">Операций нет.</p>';
+  $('#txs').querySelectorAll('.x').forEach(b => b.onclick = async () => { await api('/transactions/' + b.dataset.id, {method: 'DELETE'}); refresh(); });
+}
+
+/* --- форма --- */
+function fillCats() {
+  $('#fcat').innerHTML = cats.filter(c => c.type === type).map(c => `<option value="${c.id}">${esc(c.icon)} ${esc(c.name)}</option>`).join('');
+}
+$('#seg').querySelectorAll('button').forEach(b => b.onclick = () => {
+  type = b.dataset.t;
+  $('#seg').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  fillCats();
+});
+$('#fBtn').onclick = async () => {
+  $('#fErr').textContent = '';
+  try {
+    await api('/transactions', {method: 'POST', body: JSON.stringify({
+      category_id: +$('#fcat').value, amount: $('#famt').value, occurred_on: $('#fdate').value, description: $('#fdesc').value || null})});
+    $('#famt').value = ''; $('#fdesc').value = '';
+    const m = $('#fdate').value.slice(0, 7); if (m) $('#month').value = m;
+    filter = null; refresh();
+  } catch (e) { $('#fErr').textContent = e.message; }
+};
+
+/* --- импорт банковской выписки --- */
+let pending = null, pendingText = '';
+const catIdByName = (name, type) => (cats.find(c => c.name === name && c.type === type) || {}).id;
+const decode = buf => { try { return new TextDecoder('utf-8', {fatal: true}).decode(buf); } catch (e) { return new TextDecoder('windows-1251').decode(buf); } };
+function previewImport() {
+  if (!pendingText) return;
+  try {
+    const r = parseStatement(pendingText, catIdByName, $('#impInvert').checked);
+    pending = r.rows;
+    const sum = t => pending.filter(x => x.type === t).reduce((a, x) => a + x.amount, 0);
+    $('#impMsg').textContent = pending.length
+      ? `Найдено операций: ${pending.length} (расходы ${money(sum('expense'))}, доходы ${money(sum('income'))}).` + (r.skipped ? ` Строк пропущено: ${r.skipped}.` : '')
+      : 'В файле не нашлось операций.';
+  } catch (e) { pending = null; $('#impMsg').textContent = e.message; }
+  $('#impBtn').disabled = !pending || !pending.length;
+}
+$('#impFile').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  if (f.size > 2e6) { $('#impMsg').textContent = 'Файл больше 2 МБ. Скачайте выписку за меньший период.'; return; }
+  pendingText = decode(await f.arrayBuffer()); previewImport();
+};
+$('#impInvert').onchange = previewImport;
+$('#impBtn').onclick = async () => {
+  $('#impBtn').disabled = true;
+  try {
+    const items = pending.slice(0, 5000).map(r => ({category_id: r.category_id, amount: r.amount.toFixed(2), occurred_on: r.occurred_on, description: r.description || null}));
+    const d = await api('/transactions/bulk', {method: 'POST', body: JSON.stringify({items})});
+    $('#impMsg').textContent = `Добавлено: ${d.imported}. Повторов пропущено: ${d.skipped}.`;
+    $('#month').value = items.map(i => i.occurred_on).sort().pop().slice(0, 7); filter = null; refresh();
+  } catch (e) { $('#impMsg').textContent = e.message; $('#impBtn').disabled = false; }
+};
+
+/* --- СМС и push --- */
+let smsRows = [];
+$('#smsParse').onclick = () => {
+  const r = parseSmsBatch($('#smsText').value, today(), catIdByName);
+  smsRows = r.rows;
+  $('#smsList').innerHTML = r.rows.map(x => `<div>${x.type === 'income' ? '+' : '−'}${money(x.amount)} · ${esc(x.category)} · ${esc(x.description)}</div>`).join('');
+  $('#smsMsg').textContent = r.rows.length
+    ? `Распознано: ${r.rows.length}.` + (r.skipped ? ` Не операций или не поняла: ${r.skipped}.` : '') + (r.foreign ? ` В другой валюте (пропущено): ${r.foreign}.` : '')
+    : 'Не нашлось ни одной операции. В сообщении должны быть сумма в сомах и слова вроде «оплата», «списано» или «зачислено».';
+  $('#smsAdd').disabled = !r.rows.length;
+};
+$('#smsAdd').onclick = async () => {
+  $('#smsAdd').disabled = true;
+  try {
+    const items = smsRows.map(r => ({category_id: r.category_id, amount: r.amount.toFixed(2), occurred_on: r.occurred_on, description: r.description || null}));
+    const d = await api('/transactions/bulk', {method: 'POST', body: JSON.stringify({items})});
+    $('#smsMsg').textContent = `Добавлено: ${d.imported}. Повторов пропущено: ${d.skipped}.`;
+    $('#smsText').value = ''; $('#smsList').innerHTML = ''; smsRows = [];
+    $('#month').value = items.map(i => i.occurred_on).sort().pop().slice(0, 7); filter = null; refresh();
+  } catch (e) { $('#smsMsg').textContent = e.message; $('#smsAdd').disabled = false; }
+};
+
+token = LS.get('token'); token ? start().catch(() => logout()) : show(false);
+</script>
+</body>
+</html>
